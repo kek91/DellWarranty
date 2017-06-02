@@ -1,0 +1,5 @@
+{
+  "url": "https://api.dell.com/support/assetinfo/v4/getassetwarranty/",
+  "key": "DellApiKey",
+  "user": "YourName"
+}

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>DellWarranty</title>
+        <style>
+            *, html, body {
+                padding:0; margin:0;
+                /*font-family:Arial, sans-serif;*/
+                font:caption;
+                font-size:12px;
+                text-align:center;
+                color:#555;
+            }
+            #header {
+                width:100%;
+                text-align:center;
+                margin:5px 0px;
+                -webkit-user-select:none;
+                cursor:default;
+            }
+            #form {
+                margin:5px 0px;
+            }
+            #output {
+                margin:5px 0px;
+            }
+            h1#app_name {
+                font-size:20px;
+            }
+            h2#app_api {
+                font-size:14px;
+            }
+            input#st {
+                text-transform: uppercase;
+            }
+            table {
+                padding:5px;
+                border:none;
+                width:100%;
+            }
+            table td {
+                padding:10px;
+                border:none;
+                text-align:left;
+            }
+            table tr:nth-child(odd) {
+                background-color: #f9f9f9;
+            }
+            table tr:hover {
+                background:#f0f0f0;
+            }
+            .alert {
+                padding:10px;
+                margin:5px auto;
+                color:#fff;
+                text-align:left;
+            }
+            .alert-danger {
+                background:rgb(100%, 41.3%, 41.3%);
+            }
+            .alert-info {
+                background:rgb(41.3%, 74.1%, 100%);
+            }
+            input {
+                padding:10px;
+                font-size:14px;
+            }
+            input[type="text"] {
+                text-align:left;
+            }
+        </style>
+    </head>
+    <body>
+
+
+        <div id="header">
+            <h1 id="app_name" class="text-center">DellWarranty v0.0.0</h1>
+            <h2 id="app_api" class="text-center">Licensed to</h2>
+        </div>
+
+        <div id="form">
+            <form action="#" id="main">
+                <input type="text" id="st" name="st" class="form-control" placeholder="K70WGC2" autofocus required>
+                <input type="submit" class="form-control btn btn-primary" value="Search">
+            </form>
+        </div>
+
+        <div id="output"></div>
+
+        <!-- Debug test data
+            <div class="alert alert-danger">danger test</div>
+
+            <div class="alert alert-info">info test</div>
+
+            <table>
+                <tr><td>Model</td><td>' + pcModel + '</td></tr>
+                <tr><td>Type</td><td>' + pcType + '</td></tr>
+                <tr><td>Warranty start</td><td>' + warrantyStart + '</td></tr>
+                <tr><td>Warranty end</td><td>' + warrantyStop + '</td></tr>
+            </table>
+        -->
+
+
+
+    <script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+
+        const pjson = require('./package.json');
+        const appName    = pjson.name;
+        const appVersion = pjson.version;
+        const appRepo    = pjson.repository;
+        const appAuthor  = pjson.author;
+        const appLicense = pjson.license;
+
+        const apijson = require('./api.json');
+        const apiUrl = apijson.url;
+        const apiKey = apijson.key;
+        const apiUser = apijson.user;
+
+        document.getElementById('app_name').innerText = appName + " v" + appVersion;
+        document.getElementById('app_api').innerText = "Licensed to " + apiUser;
+
+        document.getElementById('main').addEventListener('submit', function(e){
+
+
+            e.preventDefault();
+            const servicetag = document.getElementById('st').value;
+            let output = document.getElementById('output');
+
+            let result_text = '';
+
+            if(servicetag.length < 7 ) {
+                output.className = 'alert alert-danger';
+                output.innerHTML = 'Invalid ServiceTag';
+            }
+            else {
+                output.className = 'alert alert-info';
+                output.innerHTML = 'Looking up ServiceTag '+servicetag.toUpperCase()+', please wait...';
+
+                let xhr = corsxhr('GET', apiUrl+servicetag+'?apikey='+apiKey);
+                if(!xhr) { alert("CORS XmlHttpRequest not supported... well, this is awkward. We're kind of stuck here I suppose."); }
+                xhr.onload = function() {
+                    if(this.status == 200) {
+                        
+                        const data = JSON.parse(xhr.responseText);
+
+                        // console.log(data.InvalidFormatAssets.BadAssets);
+                        // console.log(data.InvalidFormatAssets.BadAssets.length);
+
+                        if(data.InvalidFormatAssets.BadAssets.length !== 0) {
+                            output.className = "alert alert-danger";
+                            output.innerHTML = 'Dell response: Invalid format for ServiceTag';
+                        }
+                        else if(data.InvalidBILAssets.BadAssets.length !== 0) {
+                            output.className = "alert alert-danger";
+                            output.innerHTML = 'Dell response: ServiceTag doesn\'t exist in BIL';
+                        }
+                        else {
+                            const dellDetails = data.AssetWarrantyResponse[0].ProductHeaderData;
+                            const pcModel = dellDetails.SystemDescription;
+                            const pcType = dellDetails.ProductFamily;
+
+                            const dellWarranty = data.AssetWarrantyResponse[0].AssetEntitlementData;
+                            const warrantyStart = dellWarranty[0].StartDate.split('T')[0];
+                            const warrantyStop = dellWarranty[0].EndDate.split('T')[0];
+
+                            output.className = "";
+                            output.innerHTML = '<table>\
+                            <tr><td>Model</td><td>' + pcModel + '</td></tr>\
+                            <tr><td>Type</td><td>' + pcType + '</td></tr>\
+                            <tr><td>Warranty start</td><td>' + warrantyStart + '</td></tr>\
+                            <tr><td>Warranty end</td><td>' + warrantyStop + '</td></tr>\
+                            </table>';
+                        }
+                    }
+                    else {
+                        output.className = "alert alert-danger";
+                        output.innerHTML = JSON.parse(xhrsentral.responseText);
+                    }
+                }
+                xhr.onerror = function() { 
+                    console.log("Error: " + xhr.responseText); 
+                }
+                xhr.send();
+            }
+            
+
+        });
+
+
+
+        
+        function corsxhr(method, url) {
+            var xhr = new XMLHttpRequest();
+            if ("withCredentials" in xhr) {
+                // XHR for Chrome/Firefox/Opera/Safari.
+                xhr.open(method, url, true);
+            }
+            else if (typeof XDomainRequest != "undefined") {
+                // XDomainRequest for IE.
+                xhr = new XDomainRequest();
+                xhr.open(method, url);
+            }
+            else {
+                // CORS not supported.
+                xhr = null;
+            }
+            return xhr;
+        }
+
+
+    })
+
+
+
+    </script>
+
+
+    </body>
+</html>
