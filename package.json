@@ -1,6 +1,6 @@
 {
   "name": "DellWarranty",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "description": "Lookup Dell warranty information",
   "main": "main.js",
   "scripts": {

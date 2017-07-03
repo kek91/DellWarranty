@@ -6,6 +6,15 @@ Simple Electron app for looking up Dell Warranty API and retrieve start/end date
 
 
 
+**Changelog**
+
+- v0.3.0:
+
+  - Keep the last 5 queries in localStorage for history
+  - Cleaner UI
+
+  ​
+
 To build it yourself simply:
 
 - Clone the repo
@@ -25,5 +34,5 @@ Replace `.` with path to source unless your cwd is already there.
 
 
 
-![Screenshot GUI](DellWarrantyv0.2.5.png)
+![Screenshot GUI](DellWarrantyv0.3.0.png)
 

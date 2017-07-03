@@ -27,11 +27,12 @@
             #output {
                 margin:5px 0px;
             }
+            
             h1#app_name {
-                font-size:20px;
+                font-size:18px;
             }
             h2#app_api {
-                font-size:14px;
+                font-size:10px;
             }
             input#st {
                 text-transform: uppercase;
@@ -41,10 +42,14 @@
                 border:none;
                 width:100%;
             }
-            table td {
+            table td, table th {
                 padding:10px;
                 border:none;
                 text-align:left;
+            }
+            table th {
+                text-align:center;
+                font-weight:bold;
             }
             table tr:nth-child(odd) {
                 background-color: #f9f9f9;
@@ -71,24 +76,36 @@
             input[type="text"] {
                 text-align:left;
             }
+
+            #history {
+                margin-top:15px;
+                padding-top:15px;
+                font-size:8px;
+                border-top:1px solid #ccc;
+            }
+            #history table {
+                font-size:8px;
+            }
         </style>
     </head>
     <body>
 
 
         <div id="header">
-            <h1 id="app_name" class="text-center">DellWarranty v0.0.0</h1>
-            <h2 id="app_api" class="text-center">Licensed to</h2>
+            <h1 id="app_name" class="text-center">DellWarranty</h1>
+            <!--<h2 id="app_api" class="text-center">Licensed to</h2>-->
         </div>
 
         <div id="form">
             <form action="#" id="main">
-                <input type="text" id="st" name="st" class="form-control" placeholder="K70WGC2" autofocus required>
+                <input type="text" id="st" name="st" class="form-control" value="F7XWGC2" autofocus required>
                 <input type="submit" class="form-control btn btn-primary" value="Search">
             </form>
         </div>
 
         <div id="output"></div>
+
+        <div id="history"></div>
 
         <!-- Debug test data
             <div class="alert alert-danger">danger test</div>
@@ -121,8 +138,27 @@
         const apiKey = apijson.key;
         const apiUser = apijson.user;
 
-        document.getElementById('app_name').innerText = appName + " v" + appVersion;
-        document.getElementById('app_api').innerText = "Licensed to " + apiUser;
+        // document.getElementById('app_name').innerText = appName + " v" + appVersion;
+        // document.getElementById('app_api').innerText = "Licensed to " + apiUser;
+        document.title = 'DellWarranty v'+appVersion;
+
+
+        // Populate history
+        let HTMLh = '<table id="table_history">';
+        HTMLh += '<thead><tr><th>ST</th><th>Model</th><th>Start</th><th>End</th></tr></thead>';
+        HTMLh += '<tbody>';
+        for(let i=0; i<localStorage.length; i++) {
+            let iData = JSON.parse(localStorage.getItem(localStorage.key(i)));
+            let iST = iData.st;
+            let iModel = iData.model;
+            let iStart = iData.warranty_start;
+            let iEnd = iData.warranty_end;
+            HTMLh += '<tr><td>'+iST+'</td><td>'+iModel+'</td><td>'+iStart+'</td><td>'+iEnd+'</td></tr>';
+            // document.getElementById('history').innerHTML += localStorage.getItem(localStorage.key(i));
+        }
+        HTMLh += '</tbody></table>';
+        document.getElementById('history').innerHTML = HTMLh;
+        
 
         document.getElementById('main').addEventListener('submit', function(e){
 
@@ -142,14 +178,14 @@
                 output.innerHTML = 'Looking up ServiceTag '+servicetag.toUpperCase()+', please wait...';
 
                 let xhr = corsxhr('GET', apiUrl+servicetag+'?apikey='+apiKey);
-                if(!xhr) { alert("CORS XmlHttpRequest not supported... well, this is awkward. We're kind of stuck here I suppose."); }
+                if(!xhr) { alert("CORS XmlHttpRequest not supported. Well this is awkward, doesn't Electron use Chromium?"); }
                 xhr.onload = function() {
                     if(this.status == 200) {
                         
                         const data = JSON.parse(xhr.responseText);
 
-                        // console.log(data.InvalidFormatAssets.BadAssets);
-                        // console.log(data.InvalidFormatAssets.BadAssets.length);
+                        console.log(data.InvalidFormatAssets.BadAssets);
+                        console.log(data.InvalidFormatAssets.BadAssets.length);
 
                         if(data.InvalidFormatAssets.BadAssets.length !== 0) {
                             output.className = "alert alert-danger";
@@ -175,6 +211,36 @@
                             <tr><td>Warranty start</td><td>' + warrantyStart + '</td></tr>\
                             <tr><td>Warranty end</td><td>' + warrantyStop + '</td></tr>\
                             </table>';
+
+                            // Save entry to localStorage and append to history table
+                            var lsD = new Date();
+                            var lsTs = lsD.getTime();
+                            localStorage.removeItem(localStorage.key(0));
+                            localStorage.setItem(
+                                ''+lsTs+'',
+                                '{\
+                                    "st":"'+servicetag+'",\
+                                    "model":"'+pcModel+'",\
+                                    "warranty_start":"'+warrantyStart+'",\
+                                    "warranty_end":"'+warrantyStop+'"\
+                                }'
+                            );
+                            
+                            var tableRef = document.getElementById('table_history').getElementsByTagName('tbody')[0];
+                            // var newRow   = tableRef.insertRow(0);
+                            var newRow   = tableRef.insertRow(tableRef.rows.length);
+                            var c0  = newRow.insertCell(0);
+                            var c1  = newRow.insertCell(1);
+                            var c2  = newRow.insertCell(2);
+                            var c3  = newRow.insertCell(3);
+                            var c0txt  = document.createTextNode(''+servicetag);
+                            var c1txt  = document.createTextNode(''+pcModel);
+                            var c2txt  = document.createTextNode(''+warrantyStart);
+                            var c3txt  = document.createTextNode(''+warrantyStop);
+                            c0.appendChild(c0txt);
+                            c1.appendChild(c1txt);
+                            c2.appendChild(c2txt);
+                            c3.appendChild(c3txt);
                         }
                     }
                     else {
@@ -194,7 +260,10 @@
 
 
         
-        function corsxhr(method, url) {
+        /**
+        * Creates an AJAX (XmlHttpRequest) request to Nodlys API
+        */
+        function corsxhr(method, url) { // createCORSRequest
             var xhr = new XMLHttpRequest();
             if ("withCredentials" in xhr) {
                 // XHR for Chrome/Firefox/Opera/Safari.
